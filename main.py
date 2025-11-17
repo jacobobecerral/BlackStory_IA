@@ -222,7 +222,7 @@ graph TD
         f.write(mermaid_content)
         f.write("```\n")
 
-    console.print(f"\n[bold blue]Transcripción guardada en:[/bold blue] [link file://{os.path.abspath(filename)}]{filename}[/link]")
+    console.print(f"\n[bold blue]Transcripción guardada en:[/bold blue] [link=file://{os.path.abspath(filename)}]{filename}[/link]")
 
 if __name__ == "__main__":
     asyncio.run(main())
