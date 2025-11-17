@@ -98,7 +98,7 @@ async def main():
             return
 
     # Fase 2: Investigación (El Bucle)
-    console.print(Panel(f"[bold blue]Enigma:[/bold blue]\n{enigma}", title="[bold blue]El Misterio[/bold blue]", title_align="left", border_style="blue"))
+    console.print(Panel(Text(f"[bold blue]Enigma:[/bold blue]\n{enigma}", justify="left"), title="[bold blue]El Misterio[/bold blue]", title_align="left", border_style="blue"))
     console.print("\n[bold cyan]Comienza la investigación...[/bold cyan]\n")
 
     historial_chat = []
@@ -148,8 +148,8 @@ async def main():
         historial_chat.append(f"Narrador: {narrador_answer}")
 
     # Fase 3: Revelación (El Final)
-    console.print(Panel("[bold blue]--- FIN DE LA PARTIDA ---[/bold blue]", justify="center"))
-    console.print(Panel(f"[bold magenta]Solución Secreta:[/bold magenta]\n{solucion_secreta}", title="[bold magenta]La Verdad Revelada[/bold magenta]", title_align="left", border_style="magenta"))
+    console.print(Panel(Text("[bold blue]--- FIN DE LA PARTIDA ---[/bold blue]", justify="center")))
+    console.print(Panel(Text(f"[bold magenta]Solución Secreta:[/bold magenta]\n{solucion_secreta}", justify="left"), title="[bold magenta]La Verdad Revelada[/bold magenta]", title_align="left", border_style="magenta"))
 
     # Juicio Final
     veredicto = ""
