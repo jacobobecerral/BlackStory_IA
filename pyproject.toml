@@ -1,0 +1,14 @@
+[project]
+name = "black-story"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.73.0",
+    "google-generativeai>=0.8.5",
+    "ollama>=0.6.1",
+    "openai>=2.8.0",
+    "rich>=14.2.0",
+    "python-dotenv>=1.0.0",
+]

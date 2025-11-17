@@ -1,0 +1,14 @@
+# Environment variables
+.env
+
+# Dependency lock file
+uv.lock
+
+# Game history directory
+historial_partidas/
+
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
