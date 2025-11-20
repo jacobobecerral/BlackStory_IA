@@ -37,3 +37,10 @@ Historial: Este es el historial completo de preguntas y respuestas: `{historial_
 Tarea: Compara el historial con la solución. Si el Investigador ha descubierto los puntos clave de la solución (incluso si no ha adivinado cada detalle), ha ganado. Si se ha quedado lejos o ha seguido pistas falsas, ha perdido.
 Formato OBLIGATORIO: Responde SOLAMENTE con la palabra `GANADOR` o la palabra `PERDEDOR`.
 """
+
+# 5. PROMPT_INVESTIGADOR_RESOLUCION (Fase 3 - Antes del Juicio Final)
+PROMPT_INVESTIGADOR_RESOLUCION = """
+Rol: Eres un detective brillante que ha terminado su investigación.
+Contexto: Este es el enigma: `{enigma}`. Este es el historial completo de la investigación: `{historial_chat}`.
+Tarea: Basándote en toda la información recopilada, formula tu resolución final del misterio. No hagas una pregunta. Responde SOLAMENTE con tu hipótesis de la solución, sin texto adicional.
+"""

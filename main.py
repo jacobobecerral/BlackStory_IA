@@ -18,6 +18,7 @@ from game_prompts import (
     PROMPT_INVESTIGADOR,
     PROMPT_NARRADOR_RESPUESTA,
     PROMPT_NARRADOR_JUEZ,
+    PROMPT_INVESTIGADOR_RESOLUCION,
 )
 from ai_providers import get_ai_provider, AIProvider
 
@@ -144,12 +145,34 @@ async def main():
                 break
 
         # c. Actualización de Estado
-        historial_chat.append(f"Investigador: {investigador_question}")
-        historial_chat.append(f"Narrador: {narrador_answer}")
+        # Solo añadir al historial si ambos se generaron correctamente
+        if investigador_question and narrador_answer:
+            historial_chat.append(f"Investigador: {investigador_question}")
+            historial_chat.append(f"Narrador: {narrador_answer}")
+        else:
+            # Si uno de los dos falló, no se añade nada para este turno
+            console.print("[bold red]Turno incompleto debido a un error. No se añade al historial.[/bold red]")
+
 
     # Fase 3: Revelación (El Final)
     console.print(Panel(Text("[bold blue]--- FIN DE LA PARTIDA ---[/bold blue]", justify="center")))
     console.print(Panel(Text(f"[bold magenta]Solución Secreta:[/bold magenta]\n{solucion_secreta}", justify="left"), title="[bold magenta]La Verdad Revelada[/bold magenta]", title_align="left", border_style="magenta"))
+
+    # Fase 3.1: Resolución del Investigador
+    investigador_resolucion = ""
+    with Live(Spinner("dots", text=f"[bold yellow]Investigador ({args.model_investigador}) formulando resolución final...[/bold yellow]"), console=console, transient=True) as live:
+        try:
+            investigador_resolucion = await investigador_provider.generate_text(
+                system_prompt=PROMPT_SISTEMA_COMUN + "\n" + PROMPT_SISTEMA_INVESTIGADOR,
+                user_prompt=PROMPT_INVESTIGADOR_RESOLUCION.format(enigma=enigma, historial_chat="\n".join(historial_chat))
+            )
+            live.stop()
+            console.print(Panel(f"[bold yellow]Resolución del Investigador:[/bold yellow]\n{investigador_resolucion}", title="[bold yellow]Hipótesis Final[/bold yellow]", title_align="left", border_style="yellow"))
+            historial_chat.append(f"Investigador (Resolución Final): {investigador_resolucion}")
+        except Exception as e:
+            live.stop()
+            console.print(f"[bold red]Error al obtener la resolución del Investigador: {e}[/bold red]")
+            investigador_resolucion = "ERROR_RESOLUCION"
 
     # Juicio Final
     veredicto = ""
@@ -159,7 +182,7 @@ async def main():
                 system_prompt=PROMPT_SISTEMA_NARRADOR, # Solo el prompt del narrador para el juicio
                 user_prompt=PROMPT_NARRADOR_JUEZ.format(
                     solucion_secreta=solucion_secreta,
-                    historial_chat="\n".join(historial_chat)
+                    historial_chat="\n".join(historial_chat) + f"\nResolución del Investigador: {investigador_resolucion}"
                 )
             )
             if raw_veredicto.upper().strip() in ["GANADOR", "PERDEDOR"]:
@@ -192,10 +215,13 @@ graph TD
     subgraph Turnos
 """
     for i in range(0, len(historial_chat), 2):
-        question = historial_chat[i].replace("Investigador: ", "")
-        answer = historial_chat[i+1].replace("Narrador: ", "")
-        mermaid_content += f"        D -- Pregunta {i//2 + 1}: {question} --> C\n"
-        mermaid_content += f"        C -- Respuesta {i//2 + 1}: {answer} --> D\n"
+        if i + 1 < len(historial_chat): # Ensure there's a corresponding answer
+            question = historial_chat[i].replace("Investigador: ", "")
+            answer = historial_chat[i+1].replace("Narrador: ", "")
+            mermaid_content += f"        D -- Pregunta {i//2 + 1}: {question} --> C\n"
+            mermaid_content += f"        C -- Respuesta {i//2 + 1}: {answer} --> D\n"
+        else:
+            console.print(f"[bold red]Advertencia: Historial de chat incompleto en el turno {i//2 + 1}. Se omitirá del diagrama.[/bold red]")
 
     mermaid_content += f"""
     end

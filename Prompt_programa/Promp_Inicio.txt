@@ -1,0 +1,132 @@
+# **PROMPT PARA BLACK\_STORY**
+
+# 
+
+# **Rol**
+
+Eres un Senior Python Engineer experto en el desarrollo de herramientas CLI interactivas, automatización y, especialmente, en la **orquestación de múltiples agentes de LLMs** para crear simulaciones e historias.
+
+# **Contexto**
+
+Tenemos un proyecto vacío donde utilizaremos únicamente **uv** como gestor de paquetes. El objetivo es crear una aplicación de terminal donde el usuario pueda **observar** a dos IAs jugando una partida de "Black Stories".
+
+## La lógica del juego es estricta:
+
+* **IA Narradora:** Inventa una historia de misterio (con una premisa y una solución secreta).  
+* **IA Investigadora:** Solo conoce la premisa e intenta adivinar la solución.  
+* **Regla Crítica:** La Investigadora solo puede hacer preguntas de sí/no. La Narradora **solo puede responder "sí", "no" o "no es relevante"**.
+
+# **Objetivo**
+
+Crear "BlackStory AI", una aplicación de terminal que orqueste una partida completa entre dos IAs. El script debe gestionar los prompts, el estado del juego (historial, turnos) y mostrar la interacción en tiempo real en la terminal de forma clara y visualmente atractiva, usando los proveedores de modelos especificados (Ollama, Gemini, OpenAI, etc.).
+
+# **¿Cómo hacerlo?**
+
+## **Parámetros de Ejecución**
+
+El script main.py debe aceptar los siguientes parámetros (usa argparse o typer):
+
+### Obligatorios (con defaults):
+
+* `-pn` / `--provider-narrador`: Proveedor de la IA Narradora (opciones: `ollama`, `gemini`, `anthropic`, `openai`). **Default: gemini**.  
+* `-mn` / `--model-narrador`: Nombre del modelo para el Narrador (ej: `llama3`, `gpt-4o`). **Default: gemini-1.5-flash**.  
+* `-pi` / `--provider-investigador`: Proveedor de la IA Investigadora (opciones: `ollama`, `gemini`, `anthropic`, `openai`). **Default: gemini**.  
+* `-mi` / `--model-investigador`: Nombre del modelo para el Investigador (ej: `mistral`, `gemini-1.5-pro`). **Default: gemini-1.5-flash**.
+
+### Opcionales:
+
+* `--turnos`: Número máximo de turnos (preguntas) antes de revelar la solución. **Default: 15**.
+
+## **Lógica Central del Juego (Game Flow)**
+
+La aplicación debe orquestar el flujo completo de una partida. Esta lógica es el núcleo del programa y debe seguir estas tres fases funcionales:
+
+### 1\. Fase de Creación (El Misterio)
+
+* **Feedback Visual:** La aplicación debe mostrar un indicador de espera (como un *spinner* de `rich`) para informar al usuario que el Narrador está "pensando" el misterio.  
+* **Generación:** Se debe invocar al LLM Narrador (`provider-narrador`, `model-narrador`) usando el **"Prompt de Sistema (Narrador)"** y el **"Prompt de Tarea (Generador)"**.  
+* **Recepción y Parseo:** La aplicación debe esperar una respuesta en formato **JSON** (con claves `enigma` y `solucion`). Debe ser robusta y parsear este JSON correctamente.  
+* **Estado Interno:**  
+  * La `solucion` se guarda como el "secreto" del juego. Es vital que **nunca** se le pase a la IA Investigadora.  
+  * El `enigma` se guarda para mostrarlo públicamente.
+
+### 2\. Fase de Investigación (El Bucle)
+
+1. **Inicio del Juego:** La aplicación debe mostrar el `enigma` recibido en la terminal, de forma clara y destacada (por ejemplo, usando un panel de `rich`).  
+2. **Bucle de Turnos:** La aplicación debe iterar un número máximo de `turnos` (definido por el parámetro `--turnos`). En cada turno:  
+   * **a. Turno del Investigador:**  
+     * **Feedback:** Mostrar un *spinner* (ej: "Investigador (`model-investigador`) pensando...").  
+     * **Lógica:** Invocar al LLM Investigador. El prompt debe incluir el **"Prompt de Sistema (Común)"**, el **"Prompt de Sistema (Investigador)"** y el **"Prompt de Tarea (Investigador)"** (formateado con el `{enigma}` y el `{historial_chat}`).  
+     * **Salida:** Mostrar la pregunta generada por la IA en la terminal (con su color e identificador).  
+   * **b. Turno del Narrador:**  
+     * **Feedback:** Mostrar un *spinner* (ej: "Narrador (`model-narrador`) evaluando...").  
+     * **Lógica:** Invocar al LLM Narrador. El prompt debe incluir el **"Prompt de Sistema (Común)"**, el **"Prompt de Sistema (Narrador)"** y el **"Prompt de Tarea (Respuesta)"** (formateado con la `{solucion_secreta}` y la `{pregunta_investigador}`).  
+     * **Validación:** La respuesta del Narrador **debe** ser validada y forzada a ser *estrictamente* "sí", "no", o "no es relevante".  
+     * **Salida:** Mostrar la respuesta validada en la terminal (con su color e identificador).  
+   * **c. Actualización de Estado:** La pregunta y la respuesta de este turno se añaden al `historial_chat` para ser usadas en la siguiente iteración.
+
+### 3\. Fase de Revelación (El Final)
+
+1. **Fin del Juego:** Al completarse los `turnos`, la aplicación debe anunciar el final de la partida.  
+2. **Revelación:** La `solucion_secreta` (guardada desde la Fase 1\) se debe imprimir finalmente en la terminal, de forma destacada, para que el usuario humano vea cuál era la historia completa.  
+3. **Juicio Final:**  
+   * **Feedback:** Mostrar un *spinner* (ej: "Narrador (`model-narrador`) emitiendo veredicto...").  
+   * **Lógica:** Invocar al LLM Narrador *una última vez* usando el **"Prompt de Sistema (Narrador)"** y el **"Prompt de Tarea (Juez)"** (formateado con la `{solucion_secreta}` y el `{historial_chat}`).  
+   * **Validación:** La respuesta debe ser *estrictamente* `GANADOR` o `PERDEDOR`.  
+   * **Salida:** Mostrar el veredicto en la terminal (ej: `[bold yellow]Veredicto: GANADOR[/bold yellow]`).  
+4. **Guardado:**  
+   * La transcripción completa del juego (metadata, enigma, historial y veredicto) se debe guardar en un archivo local en la carpeta `./historial_partidas/` (crearla si no existe).  
+   * El formato del archivo debe ser **Mermaid** (diagrama de flujo) para visualizar la conversación.  
+   * Nombre de archivo sugerido: `partida_YYYYMMDD_HHMMSS.md` (ya que Mermaid se escribe en Markdown).
+
+---
+
+## **Prompts Críticos (El corazón del juego)**
+
+Debes crear un módulo `game_prompts.py` para almacenar estas plantillas.
+
+### Prompts de Sistema (Background)
+
+*(Deben ser consultados/incluidos en cada llamada a la IA respectiva, junto con el prompt de tarea)*
+
+* **PROMPT\_SISTEMA\_COMUN:** "Eres una IA participando en un juego de misterio 'Black Stories'. Sé conciso y céntrate estrictamente en tu rol. No añadas saludos ni texto innecesario."  
+* **PROMPT\_SISTEMA\_NARRADOR:** "Tu rol es ser el 'Narrador'. Eres el guardián del secreto. Nunca des pistas. Eres estricto, literal y misterioso. Nunca rompas las reglas del juego."  
+* **PROMPT\_SISTEMA\_INVESTIGADOR:** "Tu rol es ser el 'Investigador'. Eres lógico, metódico y brillante. Tu objetivo es descubrir la verdad haciendo preguntas inteligentes de sí/no."
+
+### Prompts de Tarea (Juego)
+
+**1\. PROMPT\_NARRADOR\_GENERADOR (Fase 1\)**
+
+* **Rol:** "Eres un maestro de las 'Black Stories'. Tu trabajo es inventar un misterio macabro, inteligente e inesperado."  
+* **Tarea:** "Debes generar una historia con una premisa (enigma) corta y una solución (historia completa) que no sea obvia."  
+* **Formato OBLIGATORIO:** "Responde SOLAMENTE con un objeto JSON válido, sin ningún texto antes ni después. El JSON debe tener dos claves: `enigma` (string) y `solucion` (string)."
+
+**2\. PROMPT\_INVESTIGADOR (Fase 2\)**
+
+* **Rol:** "Eres un detective brillante resolviendo un misterio."  
+* **Reglas:** "Tu única herramienta son preguntas de 'sí' o 'no'. El Narrador solo puede responder 'sí', 'no', o 'no es relevante'. No hagas preguntas abiertas."  
+* **Contexto:** "Este es el enigma: `{enigma}`. Este es el historial de la investigación: `{historial_chat}`."  
+* **Tarea:** "Basándote en todo lo anterior, formula tu siguiente pregunta de 'sí' o 'no'. Responde SOLAMENTE con la pregunta, sin texto adicional."
+
+**3\. PROMPT\_NARRADOR\_RESPUESTA (Fase 2\)**
+
+* **Rol:** "Eres el Narrador de una 'Black Stories'. Eres un guardián del secreto."  
+* **Reglas:** "Tu única respuesta permitida es ESTRICTAMENTE una de estas tres opciones: `sí`, `no`, `no es relevante`. No puedes dar pistas, ni explicaciones. Si la pregunta es parcialmente cierta, pero no del todo, responde `no`."  
+* **Contexto:** "Esta es la solución secreta que SÓLO TÚ CONOCES: `{solucion_secreta}`."  
+* **Tarea:** "El investigador acaba de hacer esta pregunta: `{pregunta_investigador}`. Compara la pregunta con la solución secreta y responde ESTRICTAMENTE con `sí`, `no`, o `no es relevante`. Responde SOLAMENTE con una de esas tres palabras."
+
+**4\. PROMPT\_NARRADOR\_JUEZ (Fase 3\)**
+
+* **Rol:** "Eres el Juez del juego 'Black Stories'."  
+* **Contexto:** "La partida ha terminado. Vas a decidir si el Investigador ha ganado o perdido."  
+* **Información:** "Esta es la solución secreta: `{solucion_secreta}`."  
+* **Historial:** "Este es el historial completo de preguntas y respuestas: `{historial_chat}`."  
+* **Tarea:** "Compara el historial con la solución. Si el Investigador ha descubierto los puntos clave de la solución (incluso si no ha adivinado cada detalle), ha ganado. Si se ha quedado lejos o ha seguido pistas falsas, ha perdido."  
+* **Formato OBLIGATORIO:** "Responde SOLAMENTE con la palabra `GANADOR` o la palabra `PERDEDOR`."
+
+---
+
+## **Estructura del Proyecto**
+
+* Crea métodos y ficheros con responsabilidades limitadas.  
+* Separa la lógica de cada proveedor de IA en su propio módulo.

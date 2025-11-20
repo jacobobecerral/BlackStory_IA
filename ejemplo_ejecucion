@@ -1,0 +1,5 @@
+El mejor:
+uv run main.py -pn gemini -mn gemini-2.5-flash -pi gemini -mi gemini-2.5-flash --turnos 3
+
+El mas rapido:
+uv run main.py -pn ollama -mn gemma3:1b -pi ollama -mi gemma3:1b --turnos 3
